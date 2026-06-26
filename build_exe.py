@@ -28,6 +28,7 @@ def build():
         "--noconsole",
         "--onefile",
         "--collect-all", "winrt",
+        "--icon=app_icon.ico",
         "--name", "win-translate",
         "main.py"
     ]

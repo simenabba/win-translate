@@ -16,6 +16,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Win-Translate v1.0 - Trực Tiếp Game")
         self.resize(500, 600)
+        self.setWindowIcon(QIcon("app_icon.ico"))
         
         # Lưu trữ trạng thái tọa độ vùng chọn (mặc định chọn vùng trung tâm nếu chưa vẽ)
         self.crop_x = 100
