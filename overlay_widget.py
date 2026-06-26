@@ -45,7 +45,9 @@ class OverlayWidget(QWidget):
         self.is_locked = False
         self.is_resizing = False
         self.drag_position = QPoint()
-        self.text = ""
+        self.ocr_text = ""
+        self.audio_text = ""
+        self.audio_text_color = QColor(255, 223, 0) # Màu vàng neon sáng
         self.bg_opacity = 180  # Mặc định nền hộp thoại mờ (0 - 255)
         self.text_color = QColor(255, 255, 255) # Chữ trắng
         self.font_size = 18
@@ -57,9 +59,18 @@ class OverlayWidget(QWidget):
         # Đặt font chữ
         self.overlay_font = QFont("Arial", self.font_size, QFont.Weight.Bold)
 
+    def set_ocr_text(self, text):
+        """Cập nhật văn bản dịch từ OCR."""
+        self.ocr_text = text
+        self.update()
+
     def set_text(self, text):
-        """Cập nhật văn bản dịch."""
-        self.text = text
+        """Hàm cũ làm alias cho set_ocr_text để đảm bảo tính tương thích."""
+        self.set_ocr_text(text)
+
+    def set_audio_text(self, text):
+        """Cập nhật văn bản dịch từ âm thanh trực tiếp."""
+        self.audio_text = text
         self.update()
 
     def set_font_size(self, size):
@@ -125,33 +136,70 @@ class OverlayWidget(QWidget):
             painter.drawRect(self.width() - 15, self.height() - 15, 15, 15)
         else:
             # Chế độ Dịch: Vẽ nền mờ theo cấu hình (ví dụ nền đen mờ giúp đọc chữ dễ hơn)
-            if self.bg_opacity > 0 and self.text:
+            if self.bg_opacity > 0 and (self.ocr_text or self.audio_text):
                 painter.fillRect(self.rect(), QColor(0, 0, 0, self.bg_opacity))
                 
         # 2. Vẽ chữ dịch
-        if self.text:
-            painter.setFont(self.overlay_font)
-            # Tạo vùng đệm lề cho chữ
-            rect_margin = self.rect().adjusted(15, 10, -15, -10)
-            
+        painter.setFont(self.overlay_font)
+        rect_margin = self.rect().adjusted(15, 10, -15, -10)
+        
+        has_audio = bool(self.audio_text.strip())
+        has_ocr = bool(self.ocr_text.strip())
+        
+        def draw_text_with_shadow(rect, text, color, alignment=Qt.AlignmentFlag.AlignCenter):
             # Vẽ bóng đổ cho chữ để đọc rõ hơn trên mọi nền game (kể cả khi tắt nền)
             if self.bg_opacity < 100:
                 painter.setPen(QColor(0, 0, 0, 220))
                 # Vẽ dịch bóng xuống 2 pixel sang phải 2 pixel
-                shadow_rect = rect_margin.adjusted(2, 2, 2, 2)
+                shadow_rect = rect.adjusted(2, 2, 2, 2)
                 painter.drawText(
                     shadow_rect, 
-                    Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, 
-                    self.text
+                    alignment | Qt.TextFlag.TextWordWrap, 
+                    text
                 )
                 
             # Vẽ chữ chính
-            painter.setPen(self.text_color)
+            painter.setPen(color)
             painter.drawText(
-                rect_margin, 
-                Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap, 
-                self.text
+                rect, 
+                alignment | Qt.TextFlag.TextWordWrap, 
+                text
             )
+
+        if not self.is_locked:
+            # Ở chế độ Edit, hiển thị gợi ý
+            demo_text = "[Kéo thả để di chuyển hoặc kéo góc phải để chỉnh kích cỡ phụ đề]"
+            draw_text_with_shadow(rect_margin, demo_text, QColor(0, 150, 255))
+        else:
+            # Chia đôi khung dịch cố định (50% trên cho dịch âm thanh, 50% dưới cho OCR)
+            height_half = rect_margin.height() // 2
+            
+            audio_rect = QRect(rect_margin.left(), rect_margin.top(), rect_margin.width(), height_half - 4)
+            ocr_rect = QRect(rect_margin.left(), rect_margin.top() + height_half + 4, rect_margin.width(), height_half - 4)
+            
+            # Luôn vẽ một đường phân chia mờ ở giữa khi có một trong hai văn bản để phân tách rõ ranh giới hai nửa
+            if has_audio or has_ocr:
+                painter.setPen(QColor(100, 100, 100, 80))
+                painter.drawLine(rect_margin.left(), rect_margin.top() + height_half, 
+                                 rect_margin.right(), rect_margin.top() + height_half)
+            
+            # Vẽ phần dịch âm thanh nếu có (luôn ở nửa trên, căn lề trái và căn giữa dọc)
+            if has_audio:
+                draw_text_with_shadow(
+                    audio_rect, 
+                    f"🔊 {self.audio_text}", 
+                    self.audio_text_color,
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                )
+            
+            # Vẽ phần dịch OCR màn hình nếu có (luôn ở nửa dưới, căn lề trái và căn giữa dọc)
+            if has_ocr:
+                draw_text_with_shadow(
+                    ocr_rect, 
+                    self.ocr_text, 
+                    self.text_color,
+                    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                )
 
     # Các sự kiện di chuyển và thay đổi kích thước bằng chuột ở chế độ Edit
     def mousePressEvent(self, event):

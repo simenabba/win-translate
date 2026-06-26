@@ -8,5 +8,8 @@ winrt-Windows.Graphics.Imaging>=2.0.0
 winrt-Windows.Foundation>=2.0.0
 winrt-Windows.Globalization>=2.0.0
 winrt-Windows.Foundation.Collections>=2.0.0
+sounddevice>=0.4.6
+numpy>=1.20.0
+SpeechRecognition>=3.10.0
 
 

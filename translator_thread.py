@@ -31,6 +31,28 @@ def map_lang_code(win_tag):
     # Mặc định lấy 2 ký tự đầu
     return win_tag[:2]
 
+def map_mymemory_lang_code(lang_code):
+    """Ánh xạ mã ngôn ngữ sang mã mà MyMemory hỗ trợ để tránh lỗi không hỗ trợ en/vi."""
+    lang_code = lang_code.lower()
+    mapping = {
+        "en": "en-US",
+        "vi": "vi-VN",
+        "ja": "ja-JP",
+        "ko": "ko-KR",
+        "zh-cn": "zh-CN",
+        "zh-tw": "zh-TW",
+        "fr": "fr-FR",
+        "de": "de-DE",
+        "ru": "ru-RU",
+    }
+    if lang_code in mapping:
+        return mapping[lang_code]
+    for key, val in mapping.items():
+        if lang_code.startswith(key):
+            return val
+    return lang_code
+
+
 class TranslatorThread(QThread):
     # Phát đi dòng chữ đã dịch về cho UI
     translation_ready = pyqtSignal(str)
@@ -98,7 +120,9 @@ class TranslatorThread(QThread):
                 translator = GoogleTranslator(source=src_code, target=dest_code)
                 translated = translator.translate(text)
             elif self.engine_type == "MyMemory":
-                translator = MyMemoryTranslator(source=src_code, target=dest_code)
+                mym_src = map_mymemory_lang_code(src_code)
+                mym_dest = map_mymemory_lang_code(dest_code)
+                translator = MyMemoryTranslator(source=mym_src, target=mym_dest)
                 translated = translator.translate(text)
         except Exception as e:
             self.log_signal.emit(f"Lỗi khi dịch bằng {self.engine_type}: {e}. Đang thử fallback...")
@@ -109,7 +133,9 @@ class TranslatorThread(QThread):
                 if fallback_engine == "Google":
                     translator = GoogleTranslator(source=src_code, target=dest_code)
                 else:
-                    translator = MyMemoryTranslator(source=src_code, target=dest_code)
+                    mym_src = map_mymemory_lang_code(src_code)
+                    mym_dest = map_mymemory_lang_code(dest_code)
+                    translator = MyMemoryTranslator(source=mym_src, target=mym_dest)
                 translated = translator.translate(text)
                 self.log_signal.emit(f"Dịch thành công bằng dịch vụ dự phòng ({fallback_engine})")
             except Exception as fe:
@@ -137,7 +163,6 @@ class TranslatorThread(QThread):
     def stop(self):
         """Dừng luồng xử lý."""
         self.running = False
-        self.wait()
 
     def run(self):
         import winrt._winrt as _w
