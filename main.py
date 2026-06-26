@@ -65,6 +65,14 @@ def main():
     print("Khởi động ứng dụng Win-Translate...")
 
     # 2. Khởi tạo ứng dụng Qt
+    # Cấu hình AppUserModelID để Windows hiển thị đúng icon ứng dụng trên Taskbar khi chạy script Python
+    try:
+        import ctypes
+        myappid = 'simenabba.win-translate.1.0'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception as e:
+        print(f"Không thể cấu hình AppUserModelID: {e}")
+
     app = QApplication(sys.argv)
     
     # 3. Khởi tạo và hiển thị cửa sổ điều khiển chính
